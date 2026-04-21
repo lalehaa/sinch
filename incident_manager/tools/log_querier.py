@@ -64,7 +64,8 @@ def query_logs(resource_name: str, time_window_minutes: int = 30) -> dict:
     Returns:
         A dictionary containing the log entries and a summary analysis.
     """
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
     raw_entries = _MOCK_LOG_ENTRIES.get(resource_name, _DEFAULT_LOGS)
 
     # Filter entries within the time window
