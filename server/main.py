@@ -46,6 +46,7 @@ runner = Runner(
     agent=root_agent,
     app_name="incident_manager",
     session_service=session_service,
+    auto_create_session=True,  # Tell the runner to handle session creation
 )
 
 
@@ -62,12 +63,6 @@ async def _run_agent(alert_data: dict) -> dict:
     user_id = "alert-system"
     session_id = f"alert-{uuid.uuid4().hex[:12]}"
 
-    session = session_service.create_session(
-        app_name="incident_manager",
-        user_id=user_id,
-        session_id=session_id,
-    )
-
     # Format alert as a message to the agent
     alert_json = json.dumps(alert_data, indent=2)
     prompt = (
@@ -83,15 +78,19 @@ async def _run_agent(alert_data: dict) -> dict:
 
     # Run the agent and collect response
     agent_response_text = ""
-    async for event in runner.run_async(
-        user_id=user_id,
-        session_id=session_id,
-        new_message=user_message,
-    ):
-        if event.is_final_response():
-            for part in event.content.parts:
-                if part.text:
-                    agent_response_text += part.text
+    try:
+        async for event in runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_message,
+        ):
+            if event.is_final_response():
+                for part in event.content.parts:
+                    if part.text:
+                        agent_response_text += part.text
+    except Exception as e:
+        logger.error(f"Error during agent execution: {e}")
+        raise e
 
     return {
         "alert_id": alert_data.get("alert_id", "unknown"),
